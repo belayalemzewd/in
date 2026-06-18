@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Send, RotateCcw, AlertCircle, CheckCircle, Package, Download, Upload, FileUp, X } from 'lucide-react';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { supabase } from './lib/supabaseClient';
 import SparePartsDashboard from './SparePartsDashboard';
 
@@ -345,13 +343,28 @@ const InventorySystem = () => {
       }
 
       // Try signing in automatically (may fail if email confirmation required)
-      try {
-        await supabase.auth.signInWithPassword({
-          email: signUpForm.email,
-          password: signUpForm.password
-        });
-      } catch (signinErr) {
-        console.warn('Post-signup signin attempt failed:', signinErr);
+      const signInResp = await supabase.auth.signInWithPassword({
+        email: signUpForm.email,
+        password: signUpForm.password
+      });
+
+      // If sign-in returned an error, surface a helpful message.
+      if (signInResp.error) {
+        console.warn('Post-signup signin attempt failed:', signInResp.error);
+        // If user object exists from signUp but there's no session, it's likely
+        // that email confirmation is required by Supabase settings.
+        if ((data && (data.user || data.data?.user)) && !signInResp.data?.session) {
+          setSignUpError('Account created — please check your email and confirm your address before signing in.');
+        } else {
+          setSignUpError(signInResp.error.message || 'Account created, but automatic sign-in failed');
+        }
+      } else {
+        // Successful sign-in: set user and fetch profile immediately
+        const session = signInResp.data?.session;
+        if (session?.user) {
+          setUser(session.user);
+          fetchProfile(session.user.id);
+        }
       }
 
       setShowSignUp(false);
@@ -715,19 +728,19 @@ const InventorySystem = () => {
       const fileExtension = file.name.split('.').pop().toLowerCase();
 
       if (fileExtension === 'csv') {
+        const PapaMod = await import('papaparse');
+        const Papa = PapaMod?.default ?? PapaMod;
         return new Promise((resolve, reject) => {
           Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
-            complete: (results) => {
-              resolve(results.data);
-            },
-            error: (error) => {
-              reject(error);
-            }
+            complete: (results) => resolve(results.data),
+            error: (error) => reject(error)
           });
         });
       } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        const xlsxMod = await import('xlsx');
+        const XLSX = xlsxMod?.default ?? xlsxMod;
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -877,7 +890,7 @@ const InventorySystem = () => {
     }
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const template = [
       {
         'Kit Number': 'BR001',
@@ -896,6 +909,8 @@ const InventorySystem = () => {
       }
     ];
 
+    const xlsxMod = await import('xlsx');
+    const XLSX = xlsxMod?.default ?? xlsxMod;
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Kits');
@@ -1049,7 +1064,7 @@ const InventorySystem = () => {
     }
   };
 
-  const downloadDistributeTemplate = () => {
+  const downloadDistributeTemplate = async () => {
     const template = [
       {
         'Kit Number': 'BR001',
@@ -1065,13 +1080,15 @@ const InventorySystem = () => {
       }
     ];
 
+    const xlsxMod = await import('xlsx');
+    const XLSX = xlsxMod?.default ?? xlsxMod;
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Distributions');
     XLSX.writeFile(wb, 'bulk_distribution_template.xlsx');
   };
 
-  const downloadFailedDistributeRecords = () => {
+  const downloadFailedDistributeRecords = async () => {
     const failedRows = bulkDistributeData
       .filter(row => !row.validation.isValid)
       .map(row => {
@@ -1084,6 +1101,8 @@ const InventorySystem = () => {
 
     if (failedRows.length === 0) return;
 
+    const xlsxMod = await import('xlsx');
+    const XLSX = xlsxMod?.default ?? xlsxMod;
     const ws = XLSX.utils.json_to_sheet(failedRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Failed Records');

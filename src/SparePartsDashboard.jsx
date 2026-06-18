@@ -1,14 +1,25 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+// Dynamically load Chart.js on mount to avoid including it in the main bundle
+// (it will be split into a separate chunk by our manualChunks config).
 
 const colorPalette = [
   '#10B981', '#6366F1', '#F97316', '#06B6D4', '#EF4444', '#8B5CF6', '#F59E0B', '#84CC16', '#EC4899', '#14B8A6'
 ];
 
 const SparePartsDashboard = ({ spareParts = [], movements = [] }) => {
+  useEffect(() => {
+    let mounted = true;
+    import('chart.js/auto')
+      .then(() => {
+        if (!mounted) return;
+        // chart.js/auto registers necessary components automatically
+      })
+      .catch((err) => console.warn('Failed to load chart.js dynamically', err));
+
+    return () => { mounted = false; };
+  }, []);
   // Aggregate available spares by (Component Type, Kit Type)
   const availableByCombo = useMemo(() => {
     const map = new Map();
