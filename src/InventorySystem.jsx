@@ -372,7 +372,16 @@ const InventorySystem = () => {
     } catch (err) {
       console.error('Signup error:', err);
       const fetchMsg = (err && err.message) || '';
-      if (fetchMsg.includes('Failed to fetch')) {
+      const status = err?.status || err?.response?.status;
+
+      // Handle rate-limit responses from the auth/email service
+      if (
+        status === 429 ||
+        fetchMsg.toLowerCase().includes('rate limit') ||
+        fetchMsg.toLowerCase().includes('email rate limit')
+      ) {
+        setSignUpError('Email rate limit exceeded. Please wait a few minutes before trying again, or use a different email address.');
+      } else if (fetchMsg.includes('Failed to fetch')) {
         setSignUpError('Network request failed. Check your Supabase URL, network connectivity, and CORS settings (add your dev origin to Supabase allowed origins).');
       } else {
         // include cause message when available
