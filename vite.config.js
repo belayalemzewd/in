@@ -8,4 +8,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    // Increase the chunk size warning threshold (in kB). Adjust as needed.
+    chunkSizeWarningLimit: 2000
+  },
 })
