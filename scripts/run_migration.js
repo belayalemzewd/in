@@ -8,6 +8,8 @@ Usage:
 This script uses the `pg` package and executes the SQL file contents.
 */
 
+/* eslint-disable no-undef */
+
 const fs = require('fs');
 const path = require('path');
 const { Client } = require('pg');

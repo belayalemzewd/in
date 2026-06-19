@@ -14,8 +14,22 @@ const COMPONENTS = [
   'Laptop',
   'Kit Charger',
   'Hub',
-    try {
-  const [bulkImportErrors, setBulkImportErrors] = useState([]);
+  'Battery Pack',
+  'Doc Scanner Cables',
+  'Printer',
+  'Printer Cables',
+  'Keyboard',
+  'Mouse',
+  'Power Button',
+  'LED Indicators',
+  'BMS Board',
+  'Second Screens',
+  'Backdrop'
+];
+
+const InventorySystem = () => {
+
+const [bulkImportErrors, setBulkImportErrors] = useState([]);
   const [bulkImportProgress, setBulkImportProgress] = useState(0);
   const [bulkImportResults, setBulkImportResults] = useState(null);
   const [, setBulkImportFile] = useState(null);
@@ -106,10 +120,10 @@ const COMPONENTS = [
       const match = msg.match(/Could not find.*['"]([^'"]+)['"]/);
       if (match && match[1]) {
         const missingCol = match[1].trim();
-        if (Array.isArray(attemptPayload)) {
+          if (Array.isArray(attemptPayload)) {
           attemptPayload = attemptPayload.map(obj => {
             const copy = { ...obj };
-            if (copy.hasOwnProperty(missingCol)) delete copy[missingCol];
+            if (Object.prototype.hasOwnProperty.call(copy, missingCol)) delete copy[missingCol];
             else {
               const key = Object.keys(copy).find(k => k.toLowerCase() === missingCol.toLowerCase());
               if (key) delete copy[key];
@@ -118,7 +132,7 @@ const COMPONENTS = [
           });
           continue;
         } else {
-          if (attemptPayload.hasOwnProperty(missingCol)) {
+          if (Object.prototype.hasOwnProperty.call(attemptPayload, missingCol)) {
             delete attemptPayload[missingCol];
             continue;
           }
@@ -136,6 +150,23 @@ const COMPONENTS = [
 
     return { data: null, error: new Error('Failed to insert movement after removing unknown columns') };
   };
+
+    // Core data states (were accidentally removed) - restore here
+    const [kits, setKits] = useState([]);
+    const [movements, setMovements] = useState([]);
+    const [spareParts, setSpareParts] = useState([]);
+    const [expandedKit, setExpandedKit] = useState(null);
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [showAddKit, setShowAddKit] = useState(false);
+    const [showDistribute, setShowDistribute] = useState(null);
+    const [showAddSparePart, setShowAddSparePart] = useState(false);
+    const [showUseSparePart, setShowUseSparePart] = useState(null);
+    const [showEditSparePart, setShowEditSparePart] = useState(null);
+    const [showEditKit, setShowEditKit] = useState(null);
+    const [showAddDamagedKit, setShowAddDamagedKit] = useState(false);
+    const [showBulkImport, setShowBulkImport] = useState(false);
+    const [bulkImportData, setBulkImportData] = useState([]);
+    const [loading, setLoading] = useState(false);
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -447,7 +478,7 @@ const COMPONENTS = [
       const { error: kitError } = await supabase.from('kits').insert(kitData);
       if (kitError) throw kitError;
 
-      const { data: moveData, error: moveError } = await safeInsertMovement(movementData);
+      const { error: moveError } = await safeInsertMovement(movementData);
       if (moveError) throw moveError;
 
       loadData();
@@ -478,7 +509,7 @@ const COMPONENTS = [
 
       if (kitError) throw kitError;
 
-      const { data: moveData, error: moveError } = await safeInsertMovement({
+      const { error: moveError } = await safeInsertMovement({
         type: 'distribution',
         kit_id: distributeForm.kitId,
         partner: distributeForm.partner,
@@ -511,7 +542,7 @@ const COMPONENTS = [
 
       if (kitError) throw kitError;
 
-      const { data: moveData, error: moveError } = await safeInsertMovement({
+      const { error: moveError } = await safeInsertMovement({
         type: 'return',
         kit_id: kitId,
         description: `Kit ${kitId} returned to stock`,
@@ -674,7 +705,7 @@ const COMPONENTS = [
         timestamp: new Date().toISOString()
       };
 
-      const { data: moveData, error: moveError } = await safeInsertMovement(movementPayload);
+      const { error: moveError } = await safeInsertMovement(movementPayload);
       if (moveError) throw moveError;
 
       loadData();
@@ -743,38 +774,7 @@ const COMPONENTS = [
   // Report damaged kit
   const handleReportDamagedKit = async (data) => {
     try {
-      // helper: attempt to insert into movements, and if PostgREST complains about unknown columns
-      // remove those keys and retry. This allows the frontend to work even if optional
-      // columns like `damaged_components` or `damaged_component_other` are not present in the DB.
-      const safeInsertMovement = async (payload) => {
-        let attemptPayload = { ...payload };
-        for (let i = 0; i < 5; i++) {
-          const { data: insertData, error: insertError } = await supabase.from('movements').insert(attemptPayload);
-          if (!insertError) return { data: insertData, error: null };
-
-          const msg = insertError?.message || insertError?.msg || '';
-          const match = msg.match(/Could not find the '\\'?"?([^'"\\)]+)\\"?'? column/);
-          if (match && match[1]) {
-            const missingCol = match[1].trim();
-            // remove the matching key from payload (try exact and snake_case match)
-            if (attemptPayload.hasOwnProperty(missingCol)) {
-              delete attemptPayload[missingCol];
-              continue;
-            }
-            // try to find a key that matches case-insensitively
-            const keyToRemove = Object.keys(attemptPayload).find(k => k.toLowerCase() === missingCol.toLowerCase());
-            if (keyToRemove) {
-              delete attemptPayload[keyToRemove];
-              continue;
-            }
-          }
-
-          // if we couldn't parse a missing-column error, return the error
-          return { data: null, error: insertError };
-        }
-
-        return { data: null, error: new Error('Failed to insert movement after removing unknown columns') };
-      };
+      
 
       // find kit by id or kit_number to get the canonical id
       const orFilter = `id.eq.${data.kitNumber},kit_number.eq.${data.kitNumber}`;
@@ -803,14 +803,14 @@ const COMPONENTS = [
         type: 'damage-report',
         kit_id: kitId,
         partner: data.partner,
-        machine_type: data.machineType,
+        kit_type: data.machineType,
         damaged_components: Array.isArray(data.damagedComponents) ? data.damagedComponents.join(', ') : data.damagedComponents,
         damaged_component_other: data.damagedComponentOther || null,
         description: `Damage reported for ${data.kitNumber}`,
         timestamp: new Date().toISOString()
       };
 
-      const { data: moveInsertData, error: moveError } = await safeInsertMovement(movementPayload);
+      const { error: moveError } = await safeInsertMovement(movementPayload);
       if (moveError) throw moveError;
 
       loadData();
@@ -974,7 +974,7 @@ const COMPONENTS = [
         description: `Kit ${row.validation.data.kitNumber} registered via bulk import`
       }));
 
-      const { data: moveData, error: moveError } = await safeInsertMovement(movementsToInsert);
+      const { error: moveError } = await safeInsertMovement(movementsToInsert);
       if (moveError) throw moveError;
 
       setBulkImportResults({
@@ -1146,7 +1146,7 @@ const COMPONENTS = [
         timestamp: new Date().toISOString()
       }));
 
-      const { data: moveData, error: moveError } = await safeInsertMovement(movementsToInsert);
+      const { error: moveError } = await safeInsertMovement(movementsToInsert);
       if (moveError) throw moveError;
 
       // Reload persisted data

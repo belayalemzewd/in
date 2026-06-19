@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 const espree = require("espree");
 const pLimit = require("p-limit");
 

@@ -4,8 +4,8 @@ Manual test (quick):
 
 - Open the app and click the "Report Damaged" quick action in the sidebar.
 - Confirm the modal `Report Damaged Kit` appears.
-- Try submitting the form empty — validation messages should show for Kit Number, Machine Type, Damaged Component(s), and Partner.
-- Enter a Kit Number (e.g., `BR001`), select a Machine Type, choose one or more damaged components.
+ - Try submitting the form empty — validation messages should show for Kit Number, Kit Type, Damaged Component(s), and Partner.
+ - Enter a Kit Number (e.g., `BR001`), select a Kit Type, choose one or more damaged components.
 - If you check `Other`, ensure the "Specify Other Component" input appears and is required.
 - Select a Partner and submit. Expect an alert "Damage report submitted" and the modal to close.
 - Verify in your backend (movements table) that a `damage-report` movement was inserted with `kit_id`, `partner`, `damaged_components` and optional `damaged_component_other`.
@@ -33,8 +33,8 @@ test('renders form and validates Other field', () => {
   const kitInput = screen.getByPlaceholderText(/enter kit number/i);
   expect(kitInput).toBeInTheDocument();
 
-  // Machine type select
-  expect(screen.getByText(/select machine type/i)).toBeInTheDocument();
+  // Kit type select
+  expect(screen.getByText(/select kit type/i)).toBeInTheDocument();
 
   // Damaged options
   expect(screen.getByText(/Fingerprint Scanner/i)).toBeInTheDocument();
@@ -46,7 +46,7 @@ test('renders form and validates Other field', () => {
 
   // Fill required fields and submit
   fireEvent.change(kitInput, { target: { value: 'BR999' } });
-  fireEvent.change(screen.getByRole('combobox', { name: /Biometric Machine Type/i }), { target: { value: 'Biorugged' } });
+  fireEvent.change(screen.getByRole('combobox', { name: /Kit Type/i }), { target: { value: 'Biorugged' } });
   fireEvent.change(screen.getByPlaceholderText(/describe the other damaged component/i), { target: { value: 'Custom part' } });
   fireEvent.change(screen.getByRole('combobox', { name: /Partner/i }), { target: { value: 'Ethio Tele' } });
 

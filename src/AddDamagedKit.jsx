@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-const MACHINE_TYPES = ['Biorugged', 'Emptech', 'Laxton'];
+const KIT_TYPES = ['BioRugged', 'Laxton', 'Emptech'];
 
 const DAMAGED_OPTIONS = [
   'Fingerprint Scanner',
@@ -53,7 +53,7 @@ export default function AddDamagedKit({ onClose = () => {}, onSubmit = () => {} 
   const validate = () => {
     const e = {};
     if (!kitNumber.trim()) e.kitNumber = 'Kit Number is required';
-    if (!machineType) e.machineType = 'Machine type is required';
+    if (!machineType) e.machineType = 'Kit type is required';
     if (damagedComponents.length === 0) e.damagedComponents = 'Select at least one damaged component';
     if (damagedComponents.includes('Other') && !damagedComponentOther.trim()) e.damagedComponentOther = 'Please specify other component';
     if (!partner) e.partner = 'Partner is required';
@@ -103,14 +103,14 @@ export default function AddDamagedKit({ onClose = () => {}, onSubmit = () => {} 
           </div>
 
           <div>
-            <label className="text-sm font-semibold text-slate-300 mb-2 block">Biometric Machine Type</label>
+            <label className="text-sm font-semibold text-slate-300 mb-2 block">Kit Type</label>
             <select
               value={machineType}
               onChange={(e) => setMachineType(e.target.value)}
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white outline-none focus:border-purple-400"
             >
-              <option value="">Select Machine Type</option>
-              {MACHINE_TYPES.map((t) => (
+              <option value="">Select Kit Type</option>
+              {KIT_TYPES.map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
