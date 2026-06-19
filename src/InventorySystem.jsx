@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Send, RotateCcw, AlertCircle, CheckCircle, Package, Download, Upload, FileUp, X } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 import SparePartsDashboard from './SparePartsDashboard';
+import AddDamagedKit from './AddDamagedKit';
 
 const KIT_TYPES = ['BioRugged', 'Laxton', 'Emptech'];
 const COMPONENTS = [
@@ -41,6 +42,7 @@ const InventorySystem = () => {
   const [showUseSparePart, setShowUseSparePart] = useState(null);
   const [showEditSparePart, setShowEditSparePart] = useState(null);
   const [showEditKit, setShowEditKit] = useState(null);
+  const [showAddDamagedKit, setShowAddDamagedKit] = useState(false);
 
   // Bulk import states
   const [showBulkImport, setShowBulkImport] = useState(false);
@@ -731,6 +733,40 @@ const InventorySystem = () => {
     }
   };
 
+  // Report damaged kit
+  const handleReportDamagedKit = async (data) => {
+    try {
+      const { error: kitError } = await supabase
+        .from('kits')
+        .update({ status: 'damaged', assigned_to: data.partner })
+        .eq('kit_number', data.kitNumber);
+
+      if (kitError) console.warn('Kit update warning:', kitError);
+
+      const { error: moveError } = await supabase
+        .from('movements')
+        .insert({
+          type: 'damage-report',
+          kit_id: data.kitNumber,
+          partner: data.partner,
+          machine_type: data.machineType,
+          damaged_components: data.damagedComponents.join(', '),
+          damaged_component_other: data.damagedComponentOther || null,
+          description: `Damage reported for ${data.kitNumber}`,
+          timestamp: new Date().toISOString()
+        });
+
+      if (moveError) throw moveError;
+
+      loadData();
+      setShowAddDamagedKit(false);
+      alert('Damage report submitted');
+    } catch (err) {
+      console.error('Error reporting damage:', err);
+      alert('Failed to submit damage report.');
+    }
+  };
+
   // Bulk Import Functions
   const parseFile = async (file) => {
     try {
@@ -1379,6 +1415,13 @@ const InventorySystem = () => {
                 className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl font-bold text-white shadow-lg shadow-cyan-500/20 transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {authLoading ? 'Signing in...' : 'Sign In'}
+              </button>
+              <button
+                onClick={() => setShowAddDamagedKit(true)}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 border border-slate-700 hover:border-red-500 rounded-xl font-semibold text-slate-300 hover:text-white transition-all duration-300 active:scale-[0.98]"
+              >
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <span>Report Damaged</span>
               </button>
 
               <div className="text-sm text-slate-400 text-center mt-2">
@@ -2246,6 +2289,14 @@ const InventorySystem = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Report Damaged Kit Modal */}
+      {showAddDamagedKit && (
+        <AddDamagedKit
+          onClose={() => setShowAddDamagedKit(false)}
+          onSubmit={handleReportDamagedKit}
+        />
       )}
 
       {/* Edit Kit Modal */}
