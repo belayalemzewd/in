@@ -14,39 +14,7 @@ const COMPONENTS = [
   'Laptop',
   'Kit Charger',
   'Hub',
-  'Battery Pack',
-  'Doc Scanner Cables',
-  'Printer',
-  'Printer Cables',
-  'Keyboard',
-  'Mouse',
-  'Power Button',
-  'LED Indicators',
-  'BMS Board',
-  'Second Screens',
-  'Backdrop'
-];
-
-const InventorySystem = () => {
-
-  const [kits, setKits] = useState([]);
-  
-  const [movements, setMovements] = useState([]);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [expandedKit, setExpandedKit] = useState(null);
-  const [showAddKit, setShowAddKit] = useState(false);
-  const [showDistribute, setShowDistribute] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [spareParts, setSpareParts] = useState([]);
-  const [showAddSparePart, setShowAddSparePart] = useState(false);
-  const [showUseSparePart, setShowUseSparePart] = useState(null);
-  const [showEditSparePart, setShowEditSparePart] = useState(null);
-  const [showEditKit, setShowEditKit] = useState(null);
-  const [showAddDamagedKit, setShowAddDamagedKit] = useState(false);
-
-  // Bulk import states
-  const [showBulkImport, setShowBulkImport] = useState(false);
-  const [bulkImportData, setBulkImportData] = useState([]);
+    try {
   const [bulkImportErrors, setBulkImportErrors] = useState([]);
   const [bulkImportProgress, setBulkImportProgress] = useState(0);
   const [bulkImportResults, setBulkImportResults] = useState(null);
@@ -125,6 +93,49 @@ const InventorySystem = () => {
     location: '',
     notes: ''
   });
+  
+  // Safe insert helper: attempts to insert into `movements`, and if PostgREST
+  // reports a missing column in the schema cache, removes that key and retries.
+  const safeInsertMovement = async (payload) => {
+    let attemptPayload = Array.isArray(payload) ? payload.map(p => ({ ...p })) : { ...payload };
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data: insertData, error: insertError } = await supabase.from('movements').insert(attemptPayload);
+      if (!insertError) return { data: insertData, error: null };
+
+      const msg = insertError?.message || insertError?.msg || '';
+      const match = msg.match(/Could not find.*['"]([^'"]+)['"]/);
+      if (match && match[1]) {
+        const missingCol = match[1].trim();
+        if (Array.isArray(attemptPayload)) {
+          attemptPayload = attemptPayload.map(obj => {
+            const copy = { ...obj };
+            if (copy.hasOwnProperty(missingCol)) delete copy[missingCol];
+            else {
+              const key = Object.keys(copy).find(k => k.toLowerCase() === missingCol.toLowerCase());
+              if (key) delete copy[key];
+            }
+            return copy;
+          });
+          continue;
+        } else {
+          if (attemptPayload.hasOwnProperty(missingCol)) {
+            delete attemptPayload[missingCol];
+            continue;
+          }
+          const key = Object.keys(attemptPayload).find(k => k.toLowerCase() === missingCol.toLowerCase());
+          if (key) {
+            delete attemptPayload[key];
+            continue;
+          }
+        }
+      }
+
+      // Unknown error or couldn't parse missing column -> return error
+      return { data: null, error: insertError };
+    }
+
+    return { data: null, error: new Error('Failed to insert movement after removing unknown columns') };
+  };
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -436,7 +447,7 @@ const InventorySystem = () => {
       const { error: kitError } = await supabase.from('kits').insert(kitData);
       if (kitError) throw kitError;
 
-      const { error: moveError } = await supabase.from('movements').insert(movementData);
+      const { data: moveData, error: moveError } = await safeInsertMovement(movementData);
       if (moveError) throw moveError;
 
       loadData();
@@ -467,15 +478,13 @@ const InventorySystem = () => {
 
       if (kitError) throw kitError;
 
-      const { error: moveError } = await supabase
-        .from('movements')
-        .insert({
-          type: 'distribution',
-          kit_id: distributeForm.kitId,
-          partner: distributeForm.partner,
-          description: `Kit ${distributeForm.kitId} distributed to ${distributeForm.partner}`,
-          notes: distributeForm.notes
-        });
+      const { data: moveData, error: moveError } = await safeInsertMovement({
+        type: 'distribution',
+        kit_id: distributeForm.kitId,
+        partner: distributeForm.partner,
+        description: `Kit ${distributeForm.kitId} distributed to ${distributeForm.partner}`,
+        notes: distributeForm.notes
+      });
 
       if (moveError) throw moveError;
 
@@ -502,14 +511,12 @@ const InventorySystem = () => {
 
       if (kitError) throw kitError;
 
-      const { error: moveError } = await supabase
-        .from('movements')
-        .insert({
-          type: 'return',
-          kit_id: kitId,
-          description: `Kit ${kitId} returned to stock`,
-          timestamp: new Date().toISOString()
-        });
+      const { data: moveData, error: moveError } = await safeInsertMovement({
+        type: 'return',
+        kit_id: kitId,
+        description: `Kit ${kitId} returned to stock`,
+        timestamp: new Date().toISOString()
+      });
 
       if (moveError) throw moveError;
 
@@ -667,7 +674,7 @@ const InventorySystem = () => {
         timestamp: new Date().toISOString()
       };
 
-      const { error: moveError } = await supabase.from('movements').insert(movementPayload);
+      const { data: moveData, error: moveError } = await safeInsertMovement(movementPayload);
       if (moveError) throw moveError;
 
       loadData();
@@ -736,26 +743,74 @@ const InventorySystem = () => {
   // Report damaged kit
   const handleReportDamagedKit = async (data) => {
     try {
+      // helper: attempt to insert into movements, and if PostgREST complains about unknown columns
+      // remove those keys and retry. This allows the frontend to work even if optional
+      // columns like `damaged_components` or `damaged_component_other` are not present in the DB.
+      const safeInsertMovement = async (payload) => {
+        let attemptPayload = { ...payload };
+        for (let i = 0; i < 5; i++) {
+          const { data: insertData, error: insertError } = await supabase.from('movements').insert(attemptPayload);
+          if (!insertError) return { data: insertData, error: null };
+
+          const msg = insertError?.message || insertError?.msg || '';
+          const match = msg.match(/Could not find the '\\'?"?([^'"\\)]+)\\"?'? column/);
+          if (match && match[1]) {
+            const missingCol = match[1].trim();
+            // remove the matching key from payload (try exact and snake_case match)
+            if (attemptPayload.hasOwnProperty(missingCol)) {
+              delete attemptPayload[missingCol];
+              continue;
+            }
+            // try to find a key that matches case-insensitively
+            const keyToRemove = Object.keys(attemptPayload).find(k => k.toLowerCase() === missingCol.toLowerCase());
+            if (keyToRemove) {
+              delete attemptPayload[keyToRemove];
+              continue;
+            }
+          }
+
+          // if we couldn't parse a missing-column error, return the error
+          return { data: null, error: insertError };
+        }
+
+        return { data: null, error: new Error('Failed to insert movement after removing unknown columns') };
+      };
+
+      // find kit by id or kit_number to get the canonical id
+      const orFilter = `id.eq.${data.kitNumber},kit_number.eq.${data.kitNumber}`;
+      const { data: foundKits, error: findError } = await supabase
+        .from('kits')
+        .select('id, kit_number')
+        .or(orFilter)
+        .limit(1);
+
+      if (findError) throw findError;
+      if (!foundKits || foundKits.length === 0) {
+        alert(`Kit not found: ${data.kitNumber}`);
+        return;
+      }
+
+      const kitId = foundKits[0].id;
+
       const { error: kitError } = await supabase
         .from('kits')
         .update({ status: 'damaged', assigned_to: data.partner })
-        .eq('kit_number', data.kitNumber);
+        .eq('id', kitId);
 
-      if (kitError) console.warn('Kit update warning:', kitError);
+      if (kitError) throw kitError;
 
-      const { error: moveError } = await supabase
-        .from('movements')
-        .insert({
-          type: 'damage-report',
-          kit_id: data.kitNumber,
-          partner: data.partner,
-          machine_type: data.machineType,
-          damaged_components: data.damagedComponents.join(', '),
-          damaged_component_other: data.damagedComponentOther || null,
-          description: `Damage reported for ${data.kitNumber}`,
-          timestamp: new Date().toISOString()
-        });
+      const movementPayload = {
+        type: 'damage-report',
+        kit_id: kitId,
+        partner: data.partner,
+        machine_type: data.machineType,
+        damaged_components: Array.isArray(data.damagedComponents) ? data.damagedComponents.join(', ') : data.damagedComponents,
+        damaged_component_other: data.damagedComponentOther || null,
+        description: `Damage reported for ${data.kitNumber}`,
+        timestamp: new Date().toISOString()
+      };
 
+      const { data: moveInsertData, error: moveError } = await safeInsertMovement(movementPayload);
       if (moveError) throw moveError;
 
       loadData();
@@ -763,7 +818,8 @@ const InventorySystem = () => {
       alert('Damage report submitted');
     } catch (err) {
       console.error('Error reporting damage:', err);
-      alert('Failed to submit damage report.');
+      const message = err?.message || err?.msg || JSON.stringify(err);
+      alert(`Failed to submit damage report. ${message}`);
     }
   };
 
@@ -918,7 +974,7 @@ const InventorySystem = () => {
         description: `Kit ${row.validation.data.kitNumber} registered via bulk import`
       }));
 
-      const { error: moveError } = await supabase.from('movements').insert(movementsToInsert);
+      const { data: moveData, error: moveError } = await safeInsertMovement(movementsToInsert);
       if (moveError) throw moveError;
 
       setBulkImportResults({
@@ -1090,7 +1146,7 @@ const InventorySystem = () => {
         timestamp: new Date().toISOString()
       }));
 
-      const { error: moveError } = await supabase.from('movements').insert(movementsToInsert);
+      const { data: moveData, error: moveError } = await safeInsertMovement(movementsToInsert);
       if (moveError) throw moveError;
 
       // Reload persisted data
@@ -1416,14 +1472,7 @@ const InventorySystem = () => {
               >
                 {authLoading ? 'Signing in...' : 'Sign In'}
               </button>
-              <button
-                onClick={() => setShowAddDamagedKit(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 border border-slate-700 hover:border-red-500 rounded-xl font-semibold text-slate-300 hover:text-white transition-all duration-300 active:scale-[0.98]"
-              >
-                <AlertCircle className="w-5 h-5 text-red-400" />
-                <span>Add Damaged Kit</span>
-              </button>
-
+              
               <div className="text-sm text-slate-400 text-center mt-2">
                 Don't have an account?{' '}
                 <button type="button" onClick={() => { setShowSignUp(true); setSignUpError(null); }} className="text-cyan-300 font-bold underline">Create account</button>
@@ -1503,6 +1552,13 @@ const InventorySystem = () => {
               >
                 <Plus className="w-5 h-5 text-purple-400" />
                 <span>Register Spare</span>
+              </button>
+              <button
+                onClick={() => setShowAddDamagedKit(true)}
+                className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 border border-slate-700 hover:border-red-500 rounded-xl font-semibold text-slate-300 hover:text-white transition-all duration-300 active:scale-[0.98]"
+              >
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <span>Add Damaged Kit</span>
               </button>
               <div className="grid grid-cols-2 gap-2">
                 <button
