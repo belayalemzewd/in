@@ -2191,13 +2191,16 @@ const [bulkImportErrors, setBulkImportErrors] = useState([]);
             <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-red-400">
                 <AlertCircle className="w-6 h-6" />
-                Damaged Kits Dashboard
+                Damaged Kits
               </h2>
 
               {(() => {
-                const damagedMovements = movements.filter(m => m.type === 'kit-damaged' || m.damaged_components || m.damaged_component_other);
-                
-                if (damagedMovements.length === 0) {
+                const damagedKits = kits.filter(kit => {
+                  const damageMoves = movements.filter(m => m.kit_id === kit.id && (m.type === 'kit-damaged' || m.damaged_components || m.damaged_component_other));
+                  return damageMoves.length > 0;
+                });
+
+                if (damagedKits.length === 0) {
                   return (
                     <div className="text-center py-12 text-slate-400">
                       <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -2207,67 +2210,80 @@ const [bulkImportErrors, setBulkImportErrors] = useState([]);
                 }
 
                 return (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {damagedMovements.slice().reverse().map((damage, idx) => (
-                      <div key={`${damage.id}-${idx}`} className="p-4 rounded-lg border border-red-500/30 bg-red-900/10 hover:bg-red-900/20 transition-all">
-                        <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <div className="font-bold text-red-400 flex items-center gap-2">
-                              <AlertCircle className="w-4 h-4" />
-                              Kit ID: {damage.kit_id || 'N/A'}
-                            </div>
-                            {damage.kit_type && (
-                              <div className="text-sm text-slate-400 mt-1">Type: <span className="text-slate-300 font-semibold">{damage.kit_type}</span></div>
-                            )}
-                          </div>
-                          <div className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">
-                            {new Date(damage.timestamp).toLocaleDateString()}
-                          </div>
-                        </div>
+                  <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-6 backdrop-blur-sm overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-700">
+                          <th className="text-left py-3 px-4 font-semibold text-slate-300">Kit #</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-300">Type</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-300">Location</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-300">Damaged Components</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-300">Partner</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-300">Date Reported</th>
+                          <th className="text-left py-3 px-4 font-semibold text-slate-300">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {damagedKits.map((kit) => {
+                          const damageMove = movements
+                            .filter(m => m.kit_id === kit.id && (m.type === 'kit-damaged' || m.damaged_components || m.damaged_component_other))
+                            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
 
-                        <div className="space-y-2 text-sm">
-                          {damage.partner && (
-                            <div className="flex justify-between">
-                              <span className="text-slate-400">Partner:</span>
-                              <span className="text-slate-300 font-semibold">{damage.partner}</span>
-                            </div>
-                          )}
-                          {(damage.damaged_components || damage.damaged_component_other) && (
-                            <div>
-                              <span className="text-slate-400">Damaged Components:</span>
-                              <div className="mt-1 space-y-1">
-                                {damage.damaged_components && (
-                                  <div className="text-slate-300 bg-red-500/10 px-2 py-1 rounded text-xs">
-                                    {damage.damaged_components}
-                                  </div>
-                                )}
-                                {damage.damaged_component_other && (
-                                  <div className="text-slate-300 bg-red-500/10 px-2 py-1 rounded text-xs italic">
-                                    Other: {damage.damaged_component_other}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                          {damage.condition && (
-                            <div className="flex justify-between">
-                              <span className="text-slate-400">Condition:</span>
-                              <span className="text-slate-300">{damage.condition}</span>
-                            </div>
-                          )}
-                          {damage.notes && (
-                            <div>
-                              <span className="text-slate-400">Notes:</span>
-                              <div className="text-slate-300 text-xs mt-1 italic">{damage.notes}</div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-700">
-                          Reported: {new Date(damage.timestamp).toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
+                          return (
+                            <tr key={kit.id} className="border-b border-slate-700 hover:bg-slate-800/30 transition-colors">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <AlertCircle className="w-4 h-4 text-red-500" />
+                                  <span className="font-bold text-slate-200">{kit.kitNumber}</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-slate-300">{kit.type}</td>
+                              <td className="py-3 px-4 text-slate-400">{kit.location || '-'}</td>
+                              <td className="py-3 px-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {damageMove?.damaged_components && (
+                                    <span className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded">
+                                      {damageMove.damaged_components}
+                                    </span>
+                                  )}
+                                  {damageMove?.damaged_component_other && (
+                                    <span className="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded italic">
+                                      {damageMove.damaged_component_other}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-slate-300">{damageMove?.partner || '-'}</td>
+                              <td className="py-3 px-4 text-xs text-slate-500">
+                                {damageMove?.timestamp ? new Date(damageMove.timestamp).toLocaleDateString() : '-'}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => setShowEditKit(kit.id) || setEditKitForm({
+                                      id: kit.id,
+                                      kitNumber: kit.kitNumber,
+                                      type: kit.type,
+                                      location: kit.location,
+                                      status: kit.status
+                                    })}
+                                    className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded text-[10px] font-bold uppercase transition-colors"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteKit(kit.id)}
+                                    className="px-2 py-1 bg-red-700/10 hover:bg-red-700/20 text-red-400 rounded text-[10px] font-bold uppercase transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 );
               })()}
