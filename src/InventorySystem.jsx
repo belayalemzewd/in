@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Send, RotateCcw, AlertCircle, CheckCircle, Package, Download, Upload, FileUp, X } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
-import SparePartsDashboard from './SparePartsDashboard';
 import AddDamagedKit from './AddDamagedKit';
 
 const KIT_TYPES = ['BioRugged', 'Laxton', 'Emptech'];
@@ -1515,65 +1514,53 @@ const [bulkImportErrors, setBulkImportErrors] = useState([]);
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 mt-4 overflow-y-auto">
-          <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Navigation</p>
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: Package },
-            { id: 'all kits', label: 'All Kits', icon: FileUp },
-            { id: 'spare parts', label: 'Spare Parts', icon: CheckCircle },
-            { id: 'activity log', label: 'Activity Log', icon: RotateCcw }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${activeTab === tab.id
-                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_20px_-5px_rgba(6,182,212,0.15)]'
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200 border border-transparent'
-                }`}
-            >
-              <tab.icon className={`w-5 h-5 transition-colors ${activeTab === tab.id ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
-              <span className="font-semibold">{tab.label}</span>
-            </button>
-          ))}
+        <nav className="flex-1 p-4 mt-4 overflow-y-auto">
+          <div className="pb-4" />
 
-          <div className="pt-8 pb-4">
-            <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Quick Actions</p>
-            <div className="space-y-3">
+          <div className="pt-6 pb-3">
+            <p className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Quick Actions</p>
+            <div className="flex flex-col gap-3 px-3">
               <button
                 onClick={() => setShowAddKit(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl font-bold text-white transition-all duration-300 shadow-lg shadow-cyan-500/20 active:scale-[0.98]"
+                className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl text-white font-bold transition-all duration-200 shadow-md active:scale-95"
+                title="Register Kit"
               >
                 <Plus className="w-5 h-5" />
-                <span>Register Kit</span>
+                <span className="text-base">Register Kit</span>
               </button>
+
               <button
                 onClick={() => setShowAddSparePart(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-xl font-semibold text-slate-300 hover:text-white transition-all duration-300 active:scale-[0.98]"
+                className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 font-semibold hover:text-white transition-all duration-200 active:scale-95"
+                title="Register Spare"
               >
                 <Plus className="w-5 h-5 text-purple-400" />
-                <span>Register Spare</span>
+                <span className="text-base">Register Spare</span>
               </button>
+
               <button
                 onClick={() => setShowAddDamagedKit(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 border border-slate-700 hover:border-red-500 rounded-xl font-semibold text-slate-300 hover:text-white transition-all duration-300 active:scale-[0.98]"
+                className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-slate-300 font-semibold hover:text-white transition-all duration-200 active:scale-95"
+                title="Add Damaged Kit"
               >
                 <AlertCircle className="w-5 h-5 text-red-400" />
-                <span>Add Damaged Kit</span>
+                <span className="text-base">Add Damaged Kit</span>
               </button>
-              <div className="grid grid-cols-2 gap-2">
+
+              <div className="flex gap-3">
                 <button
                   onClick={() => setShowBulkImport(true)}
-                  className="flex flex-col items-center justify-center gap-1 p-3 bg-slate-800/50 border border-slate-700 hover:border-green-500/50 rounded-xl text-[10px] font-bold text-slate-400 hover:text-green-400 transition-all active:scale-[0.95]"
+                  className="flex-1 flex flex-col items-center justify-center gap-1 px-4 py-4 bg-slate-800/50 border border-slate-700 rounded-xl text-xs font-bold text-slate-400 hover:text-green-400 transition-all duration-200 active:scale-95"
                 >
-                  <Upload className="w-4 h-4" />
-                  IMPORT
+                  <Upload className="w-6 h-6" />
+                  <span className="uppercase mt-1">Import</span>
                 </button>
                 <button
                   onClick={() => setShowBulkDistribute(true)}
-                  className="flex flex-col items-center justify-center gap-1 p-3 bg-slate-800/50 border border-slate-700 hover:border-amber-500/50 rounded-xl text-[10px] font-bold text-slate-400 hover:text-amber-400 transition-all active:scale-[0.95]"
+                  className="flex-1 flex flex-col items-center justify-center gap-1 px-4 py-4 bg-slate-800/50 border border-slate-700 rounded-xl text-xs font-bold text-slate-400 hover:text-amber-400 transition-all duration-200 active:scale-95"
                 >
-                  <Send className="w-4 h-4" />
-                  DISTRIBUTE
+                  <Send className="w-6 h-6" />
+                  <span className="uppercase mt-1">Distribute</span>
                 </button>
               </div>
             </div>
@@ -1616,6 +1603,31 @@ const [bulkImportErrors, setBulkImportErrors] = useState([]);
               <div className="text-2xl font-black text-white">{stat.value}</div>
             </div>
           ))}
+        </div>
+
+        {/* Horizontal Navigation below stats */}
+        <div className="mb-6">
+          <div className="flex gap-3 px-2 overflow-x-auto">
+            {[
+              { id: 'dashboard', label: 'Dashboard', icon: Package },
+              { id: 'all kits', label: 'All Kits', icon: FileUp },
+              { id: 'spare parts', label: 'Spare Parts', icon: CheckCircle },
+              { id: 'damaged kits', label: 'Damaged Kits', icon: AlertCircle },
+              { id: 'activity log', label: 'Activity Log', icon: RotateCcw }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex items-center gap-2 min-w-[140px] px-4 py-2 rounded-lg transition-all duration-300 ${activeTab === tab.id
+                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_20px_-5px_rgba(6,182,212,0.08)]'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-slate-200 border border-transparent'
+                  }`}
+              >
+                <tab.icon className={`w-5 h-5 transition-colors ${activeTab === tab.id ? 'text-cyan-400' : 'text-slate-400 group-hover:text-slate-300'}`} />
+                <span className="font-semibold text-sm">{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Dashboard Tab */}
@@ -2173,6 +2185,96 @@ const [bulkImportErrors, setBulkImportErrors] = useState([]);
           );
         })()}
 
+        {/* Damaged Kits Tab */}
+        {activeTab === 'damaged kits' && (
+          <div className="space-y-4">
+            <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
+              <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-red-400">
+                <AlertCircle className="w-6 h-6" />
+                Damaged Kits Dashboard
+              </h2>
+
+              {(() => {
+                const damagedMovements = movements.filter(m => m.type === 'kit-damaged' || m.damaged_components || m.damaged_component_other);
+                
+                if (damagedMovements.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-slate-400">
+                      <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No damaged kits reported yet</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {damagedMovements.slice().reverse().map((damage, idx) => (
+                      <div key={`${damage.id}-${idx}`} className="p-4 rounded-lg border border-red-500/30 bg-red-900/10 hover:bg-red-900/20 transition-all">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="font-bold text-red-400 flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4" />
+                              Kit ID: {damage.kit_id || 'N/A'}
+                            </div>
+                            {damage.kit_type && (
+                              <div className="text-sm text-slate-400 mt-1">Type: <span className="text-slate-300 font-semibold">{damage.kit_type}</span></div>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">
+                            {new Date(damage.timestamp).toLocaleDateString()}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-sm">
+                          {damage.partner && (
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Partner:</span>
+                              <span className="text-slate-300 font-semibold">{damage.partner}</span>
+                            </div>
+                          )}
+                          {(damage.damaged_components || damage.damaged_component_other) && (
+                            <div>
+                              <span className="text-slate-400">Damaged Components:</span>
+                              <div className="mt-1 space-y-1">
+                                {damage.damaged_components && (
+                                  <div className="text-slate-300 bg-red-500/10 px-2 py-1 rounded text-xs">
+                                    {damage.damaged_components}
+                                  </div>
+                                )}
+                                {damage.damaged_component_other && (
+                                  <div className="text-slate-300 bg-red-500/10 px-2 py-1 rounded text-xs italic">
+                                    Other: {damage.damaged_component_other}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {damage.condition && (
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">Condition:</span>
+                              <span className="text-slate-300">{damage.condition}</span>
+                            </div>
+                          )}
+                          {damage.notes && (
+                            <div>
+                              <span className="text-slate-400">Notes:</span>
+                              <div className="text-slate-300 text-xs mt-1 italic">{damage.notes}</div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-700">
+                          Reported: {new Date(damage.timestamp).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* Activity Log Tab */}
         {activeTab === 'activity log' && (
           <div className="space-y-4">
@@ -2252,38 +2354,55 @@ const [bulkImportErrors, setBulkImportErrors] = useState([]);
 
             {/* Activity Log */}
             <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-6 backdrop-blur-sm">
-              <div className="mb-6 flex justify-end">
-                <SparePartsDashboard spareParts={spareParts} movements={movements} />
-              </div>
-              <h2 className="text-xl font-bold mb-6">Recent Activity</h2>
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {(() => {
-                  const filtered = getFilteredActivityLog();
-                  
-                  if (filtered.length === 0) {
-                    return <p className="text-slate-400 text-center py-8">No activity found matching the filters</p>;
-                  }
-                  
-                  return filtered.map((movement) => (
-                    <div key={movement.id} className="p-4 rounded-lg border border-slate-700 bg-slate-900/30 flex items-start gap-3">
-                      <div className="mt-1">
-                        {movement.type === 'kit-registered' && <Package className="w-5 h-5 text-blue-400" />}
-                        {movement.type === 'distribution' && <Send className="w-5 h-5 text-amber-400" />}
-                        {movement.type === 'return' && <RotateCcw className="w-5 h-5 text-green-400" />}
-                        {movement.type === 'spare-usage' && <AlertCircle className="w-5 h-5 text-purple-400" />}
-                        {movement.type === 'spare-registered' && <CheckCircle className="w-5 h-5 text-green-400" />}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-white">{movement.description}</div>
-                        {movement.partner && <div className="text-sm text-slate-400">Partner: {movement.partner}</div>}
-                        {movement.condition && <div className="text-sm text-slate-400">Condition: {movement.condition}</div>}
-                        {movement.quantity && <div className="text-sm text-slate-400">Quantity: {movement.quantity}</div>}
-                        {movement.notes && <div className="text-sm text-slate-400 italic">{movement.notes}</div>}
-                        <div className="text-xs text-slate-500 mt-1">{new Date(movement.timestamp).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  ));
-                })()}
+              <h2 className="text-xl font-bold mb-6">Activity Log</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700">
+                      <th className="text-left py-3 px-4 font-semibold text-slate-300">Type</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-300">Description</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-300">Partner</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-300">Condition</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-300">Quantity</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-300">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const filtered = getFilteredActivityLog();
+                      
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan="6" className="text-center py-8 text-slate-400">
+                              No activity found matching the filters
+                            </td>
+                          </tr>
+                        );
+                      }
+                      
+                      return filtered.map((movement) => (
+                        <tr key={movement.id} className="border-b border-slate-700 hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {movement.type === 'kit-registered' && <Package className="w-4 h-4 text-blue-400" />}
+                              {movement.type === 'distribution' && <Send className="w-4 h-4 text-amber-400" />}
+                              {movement.type === 'return' && <RotateCcw className="w-4 h-4 text-green-400" />}
+                              {movement.type === 'spare-usage' && <AlertCircle className="w-4 h-4 text-purple-400" />}
+                              {movement.type === 'spare-registered' && <CheckCircle className="w-4 h-4 text-green-400" />}
+                              <span className="text-slate-300">{movement.type}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-300">{movement.description}</td>
+                          <td className="py-3 px-4 text-slate-400">{movement.partner || '-'}</td>
+                          <td className="py-3 px-4 text-slate-400">{movement.condition || '-'}</td>
+                          <td className="py-3 px-4 text-slate-400">{movement.quantity || '-'}</td>
+                          <td className="py-3 px-4 text-slate-500 text-xs">{new Date(movement.timestamp).toLocaleString()}</td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
